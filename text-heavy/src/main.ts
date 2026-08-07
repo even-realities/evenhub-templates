@@ -101,8 +101,11 @@ function cleanup() {
 //     must fire no matter which envelope the event arrives in, so users
 //     can always exit the app.
 const unsubscribe = bridge.onEvenHubEvent(event => {
-  const sysType = event.sysEvent?.eventType ?? null
-  const textType = event.textEvent?.eventType ?? null
+  // Coalesce to 0 only when the envelope itself is present: CLICK_EVENT (0)
+  // is omitted on the wire, but a MISSING envelope must stay null — `?? 0`
+  // on the optional chain would turn every non-sys event into a phantom tap.
+  const sysType = event.sysEvent ? (event.sysEvent.eventType ?? 0) : null
+  const textType = event.textEvent ? (event.textEvent.eventType ?? 0) : null
 
   if (sysType === OsEventTypeList.DOUBLE_CLICK_EVENT || textType === OsEventTypeList.DOUBLE_CLICK_EVENT) {
     bridge.shutDownPageContainer(1)
