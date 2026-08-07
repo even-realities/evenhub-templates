@@ -110,27 +110,36 @@ function cleanup() {
   unsubscribe()
 }
 
+// Reads the event type out of one envelope.
+//
+// CLICK_EVENT is 0, and protobuf omits zero-value fields on the wire, so a
+// single tap arrives as an envelope whose `eventType` is `undefined`. The
+// default has to be resolved INSIDE the envelope check. Writing
+// `event.sysEvent?.eventType ?? OsEventTypeList.CLICK_EVENT` instead would
+// read CLICK on events that carry no `sysEvent` at all, so every scroll,
+// exit and audio frame would fire the tap handler.
+function eventTypeOf(envelope?: { eventType?: OsEventTypeList }): OsEventTypeList | null {
+  if (!envelope) return null
+  return envelope.eventType ?? OsEventTypeList.CLICK_EVENT
+}
+
 // Event routing, critical details:
-//   • Protobuf omits zero-value fields on the wire, so CLICK_EVENT (0)
-//     arrives as `undefined`. Always coalesce with `?? 0` before comparing.
 //   • Taps/double-taps/lifecycle come through `event.sysEvent`.
 //     Scroll gestures come through `event.textEvent`. Never mix them.
 //   • Double-tap → `shutDownPageContainer(1)` is a root-level check: it
 //     must fire no matter which envelope the event arrives in, so users
 //     can always exit the app.
+//   • Check DOUBLE_CLICK_EVENT before CLICK_EVENT.
 const unsubscribe = bridge.onEvenHubEvent(event => {
-  // Coalesce to 0 only when the envelope itself is present: CLICK_EVENT (0)
-  // is omitted on the wire, but a MISSING envelope must stay null — `?? 0`
-  // on the optional chain would turn every non-sys event into a phantom tap.
-  const sysType = event.sysEvent ? (event.sysEvent.eventType ?? 0) : null
-  const textType = event.textEvent ? (event.textEvent.eventType ?? 0) : null
+  const sysType = eventTypeOf(event.sysEvent)
+  const textType = eventTypeOf(event.textEvent)
 
   if (sysType === OsEventTypeList.DOUBLE_CLICK_EVENT || textType === OsEventTypeList.DOUBLE_CLICK_EVENT) {
     bridge.shutDownPageContainer(1)
     return
   }
 
-  if (sysType === OsEventTypeList.CLICK_EVENT) {
+  if (sysType === OsEventTypeList.CLICK_EVENT || textType === OsEventTypeList.CLICK_EVENT) {
     loadImageBytes(SAMPLE_URL)
       .then(pushFrame)
       .catch(err => console.error(err))

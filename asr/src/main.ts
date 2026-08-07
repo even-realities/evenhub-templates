@@ -83,9 +83,27 @@ try {
   console.error('STT startup failed:', err)
 }
 
+let micOn = false
 if (stt) {
   await bridge.audioControl(true)
-  setStatus('listening', 'Microphone live · double-tap the temple to exit')
+  micOn = true
+  setStatus('listening', 'Microphone live · tap to pause · double-tap to exit')
+}
+
+// Tap toggles capture. `audioControl(false)` stops the host pushing PCM, so no
+// further frames reach `sendPcm`; the STT client itself is left open. If your
+// provider closes an idle stream, tear it down here and reopen it on resume.
+// No-ops until stt.ts is wired up — there is no capture to pause.
+function toggleMic() {
+  if (!stt) return
+  micOn = !micOn
+  bridge.audioControl(micOn)
+  currentContent = micOn ? 'Listening…' : 'Paused'
+  scheduleGlassesRender()
+  setStatus(
+    micOn ? 'listening' : 'paused',
+    micOn ? 'Microphone live · tap to pause · double-tap to exit' : 'Paused · tap to resume · double-tap to exit',
+  )
 }
 
 let cleanedUp = false
@@ -97,27 +115,41 @@ function cleanup() {
   unsubscribe()
 }
 
+// Reads the event type out of one envelope.
+//
+// CLICK_EVENT is 0, and protobuf omits zero-value fields on the wire, so a
+// single tap arrives as an envelope whose `eventType` is `undefined`. The
+// default has to be resolved INSIDE the envelope check. Writing
+// `event.sysEvent?.eventType ?? OsEventTypeList.CLICK_EVENT` instead would
+// read CLICK on events that carry no `sysEvent` at all — and in this template
+// that means every incoming audio frame would fire the tap handler.
+function eventTypeOf(envelope?: { eventType?: OsEventTypeList }): OsEventTypeList | null {
+  if (!envelope) return null
+  return envelope.eventType ?? OsEventTypeList.CLICK_EVENT
+}
+
 // Event routing, critical details:
-//   • Protobuf omits zero-value fields on the wire, so CLICK_EVENT (0)
-//     arrives as `undefined`. Always coalesce with `?? 0` before comparing.
 //   • Taps/double-taps/lifecycle come through `event.sysEvent`.
 //     Audio PCM frames come through `event.audioEvent` — separate branch.
 //   • Double-tap → `shutDownPageContainer(1)` is a root-level check: it
 //     must fire no matter which envelope the event arrives in, so users
 //     can always exit the app. System exit confirmation dialog appears;
 //     SYSTEM_EXIT_EVENT fires on confirm and we clean up there.
+//   • Check DOUBLE_CLICK_EVENT before CLICK_EVENT.
 const unsubscribe = bridge.onEvenHubEvent(event => {
   const pcm = event.audioEvent?.audioPcm
   if (pcm) stt?.sendPcm(pcm)
 
-  // Coalesce to 0 only when the envelope itself is present: CLICK_EVENT (0)
-  // is omitted on the wire, but a MISSING envelope must stay null — `?? 0`
-  // on the optional chain would turn every non-sys event into a phantom tap.
-  const sysType = event.sysEvent ? (event.sysEvent.eventType ?? 0) : null
-  const textType = event.textEvent ? (event.textEvent.eventType ?? 0) : null
+  const sysType = eventTypeOf(event.sysEvent)
+  const textType = eventTypeOf(event.textEvent)
 
   if (sysType === OsEventTypeList.DOUBLE_CLICK_EVENT || textType === OsEventTypeList.DOUBLE_CLICK_EVENT) {
     bridge.shutDownPageContainer(1)
+    return
+  }
+
+  if (sysType === OsEventTypeList.CLICK_EVENT || textType === OsEventTypeList.CLICK_EVENT) {
+    toggleMic()
     return
   }
 

@@ -6,17 +6,17 @@ Four fully working scaffolds you can clone and run:
 
 | Template | What it shows |
 |---|---|
-| [`minimal/`](./minimal) | Bare base: Vite + TypeScript + Even Hub SDK + simulator. "Hello from G2!" on the display. |
-| [`asr/`](./asr) | Live mic → speech-to-text pipeline with companion UI and double-tap exit. STT provider is a blank stub — plug in your own. |
-| [`image/`](./image) | Image container rendering. Preprocessing/dithering is optional; the SDK handles grayscale conversion. |
-| [`text-heavy/`](./text-heavy) | Long-form text with click-to-advance pagination. Demonstrates the 2000-char `textContainerUpgrade` path. |
+| [`minimal/`](./minimal) | Bare base: Vite + TypeScript + Even Hub SDK + simulator. Tap counts, double-tap exits. |
+| [`asr/`](./asr) | Live mic → speech-to-text pipeline with companion UI. Tap pauses capture, double-tap exits. STT provider is a blank stub — plug in your own. |
+| [`image/`](./image) | Image container rendering, tap to reload. Preprocessing/dithering is optional; the SDK handles grayscale conversion. |
+| [`text-heavy/`](./text-heavy) | Long-form text with tap-to-advance pagination. Demonstrates the 2000-char `textContainerUpgrade` path. |
 
 ## Get a template
 
 Using [`degit`](https://github.com/Rich-Harris/degit) (recommended — no git history, fast):
 
 ```bash
-npx degit LesenmiaoYu/evenhub-templates/minimal my-app
+npx degit even-realities/evenhub-templates/minimal my-app
 cd my-app
 npm install
 npm run dev
@@ -27,7 +27,7 @@ Substitute `minimal` with `asr`, `image`, or `text-heavy` for the other template
 Or clone the whole repo and copy the folder you want:
 
 ```bash
-git clone https://github.com/LesenmiaoYu/evenhub-templates.git
+git clone https://github.com/even-realities/evenhub-templates.git
 cp -r evenhub-templates/asr my-app
 cd my-app && npm install
 ```
@@ -61,6 +61,50 @@ npx evenhub pack
 ```
 
 Produces an `.ehpk` you can upload through the Even Hub dev portal.
+
+## Handling input
+
+Read this before writing your own event handler — it is the single easiest thing
+to get wrong.
+
+`OsEventTypeList.CLICK_EVENT` is `0`, and protobuf omits zero-value fields on the
+wire. A single tap therefore arrives as an envelope with **no `eventType` field
+at all**:
+
+```jsonc
+// what a single tap actually looks like
+{ "sysEvent": { "eventSource": 1 } }        // note: no eventType
+// vs. a double-tap, which carries a non-zero id
+{ "sysEvent": { "eventType": 3, "eventSource": 1 } }
+```
+
+So `event.sysEvent?.eventType` is `undefined` on a tap, and comparing it to
+`CLICK_EVENT` fails. Resolve the default **inside** the envelope check:
+
+```ts
+function eventTypeOf(envelope?: { eventType?: OsEventTypeList }): OsEventTypeList | null {
+  if (!envelope) return null
+  return envelope.eventType ?? OsEventTypeList.CLICK_EVENT
+}
+
+const sysType = eventTypeOf(event.sysEvent)
+const textType = eventTypeOf(event.textEvent)
+```
+
+Do **not** flatten it to `event.sysEvent?.eventType ?? OsEventTypeList.CLICK_EVENT`.
+That reads `CLICK_EVENT` on events that carry no `sysEvent` at all, so every
+scroll, lifecycle event and audio frame fires your tap handler.
+
+Two more rules that follow from this:
+
+- Match the explicit ids first. `DOUBLE_CLICK_EVENT` (3), `SCROLL_TOP_EVENT` (1)
+  and `SCROLL_BOTTOM_EVENT` (2) carry real values; `CLICK_EVENT` is the fallback
+  an envelope lands on when it carries no type, so it must be checked last.
+- Taps, double-taps and lifecycle events arrive on `sysEvent`; scroll gestures
+  arrive on `textEvent`; PCM arrives on `audioEvent`. Check each separately.
+
+All four templates implement this pattern — copy the handler from
+[`minimal/src/main.ts`](./minimal/src/main.ts).
 
 ## Hardware quick reference
 

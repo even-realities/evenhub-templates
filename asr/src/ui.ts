@@ -1,4 +1,4 @@
-type Status = 'connecting' | 'listening' | 'error'
+type Status = 'connecting' | 'listening' | 'paused' | 'error'
 
 let statusEl: HTMLDivElement
 let finalEl: HTMLSpanElement
@@ -15,7 +15,7 @@ export function mountUi() {
       <section class="transcript" aria-live="polite">
         <span id="final"></span><span id="interim" class="interim"></span>
       </section>
-      <footer>Double-tap the glasses temple to exit.</footer>
+      <footer>Tap the glasses temple to pause · double-tap to exit.</footer>
     </main>
   `
   statusEl = app.querySelector<HTMLDivElement>('#status')!
@@ -54,6 +54,7 @@ function injectStyles() {
       border: 1px solid transparent; letter-spacing: 0.04em; text-transform: uppercase; }
     .status-connecting { color: #A7A7A7; border-color: #3E3E3E; }
     .status-listening  { color: #3CFA44; border-color: #3CFA44; background: rgba(60,250,68,0.08); }
+    .status-paused     { color: #E5E5E5; border-color: #7B7B7B; background: rgba(229,229,229,0.06); }
     .status-error      { color: #FF453A; border-color: #FF453A; background: rgba(255,69,58,0.08); }
     .transcript { flex: 1; overflow: auto; background: #2E2E2E; border: 1px solid #3E3E3E;
       color: #E5E5E5;
