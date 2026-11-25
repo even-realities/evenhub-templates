@@ -34,7 +34,7 @@ cd my-app && npm install
 
 ## Prerequisites
 
-- Node.js v18+
+- Node.js 20 or 22+ (the Even Hub SDK does not support Node 18)
 - The Even Hub companion app installed on a phone, or the `evenhub-simulator` on desktop
 - (ASR template only) An STT provider of your choice — Deepgram, AssemblyAI, Whisper, Soniox, self-hosted, etc.
 
@@ -57,10 +57,10 @@ npx evenhub-simulator http://localhost:5173
 ## Pack for distribution
 
 ```bash
-npx evenhub pack
+npm run pack
 ```
 
-Produces an `.ehpk` you can upload through the Even Hub dev portal.
+Builds the app, then runs `evenhub pack app.json dist`. Produces an `.ehpk` you can upload through the Even Hub dev portal.
 
 ## Handling input
 

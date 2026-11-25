@@ -16,9 +16,9 @@
 // add a dither pass if the output looks muddy on glass.
 // ─────────────────────────────────────────────────────────────────────
 
-// Generates a diagonal-gradient PNG so this template renders something
-// interesting without any bundled asset. Swap this for `loadImageBytes()`
-// below once you have a real image to display.
+// Generates a diagonal-gradient PNG without any bundled asset. Not used by
+// default: main.ts loads `public/sample.png` through `loadImageBytes()`
+// below. Call this instead if you want a generated test image.
 export async function makeTestPattern(width: number, height: number): Promise<Uint8Array> {
   const canvas = document.createElement('canvas')
   canvas.width = width

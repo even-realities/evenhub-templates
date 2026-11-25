@@ -19,8 +19,9 @@
 //
 // Don't forget to add a `network` permission to app.json with your
 // provider's hosts in the `whitelist` array once you wire this up.
-// `evenhub pack` rejects an empty whitelist, which is why the default
-// app.json omits the `network` entry entirely.
+// The default app.json omits the `network` entry because there are no
+// provider hosts to list yet. Per the Even Hub networking docs, requests
+// to hosts that are not in the whitelist are blocked.
 // ─────────────────────────────────────────────────────────────────────
 
 export interface SttSnapshot {

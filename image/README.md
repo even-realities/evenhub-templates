@@ -1,6 +1,6 @@
 # image
 
-Image rendering demo on G2. Shows a test-pattern bitmap in an `ImageContainerProperty`, with tap-to-redraw and double-tap-to-exit wiring.
+Image rendering demo on G2. Shows `public/sample.png` in an `ImageContainerProperty`, with tap-to-reload and double-tap-to-exit wiring.
 
 ## Run
 
@@ -15,8 +15,9 @@ Then `npm run simulate` (desktop simulator) or `npx evenhub qr --url http://<you
 
 | File | Purpose |
 |---|---|
-| `src/main.ts` | App entry. Creates a 200x100 image container, an event-capture text layer, a status line. Renders a test pattern, redraws on single tap, exits on double tap. |
-| `src/image/renderer.ts` | Image pipeline helpers — `makeTestPattern` (zero-dependency gradient so this template runs out of the box) and `loadImageBytes` (reference fetcher for real assets). |
+| `src/main.ts` | App entry. Creates a 200x100 image container, an event-capture text layer, a status line. Loads `public/sample.png`, reloads it on single tap, exits on double tap. |
+| `src/image/renderer.ts` | Image pipeline helpers — `loadImageBytes` (fetches an image file; `main.ts` uses it) and `makeTestPattern` (zero-dependency gradient generator; not used by default). |
+| `public/sample.png` | Sample image (288x144 PNG) that `main.ts` loads at startup and on each tap. |
 | `index.html` | WebView host with zoom-locked viewport. |
 | `app.json` | Manifest. No permissions needed — local rendering only. |
 
@@ -34,11 +35,11 @@ The SDK returns `imageToGray4Failed` if its built-in conversion chokes on your b
 1. Drop an image into `public/` (e.g. `public/icon.png`).
 2. In `main.ts`, replace:
    ```typescript
-   const pattern = makeTestPattern(IMG_W, IMG_H)
+   const SAMPLE_URL = `${import.meta.env.BASE_URL}sample.png`
    ```
    with:
    ```typescript
-   const pattern = await loadImageBytes('/icon.png')
+   const SAMPLE_URL = `${import.meta.env.BASE_URL}icon.png`
    ```
 3. If the SDK returns `imageToGray4Failed`, add a client-side conversion step (canvas `getImageData` + manual 4-bit packing, or server-side ImageMagick/Pillow pre-baking).
 
