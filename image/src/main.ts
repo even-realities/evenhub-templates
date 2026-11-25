@@ -76,9 +76,10 @@ async function setStatus(text: string) {
 }
 
 // updateImageRawData must be serial — one in flight at a time.
+// Each write waits for the previous one to settle, even if it failed.
 let rendering: Promise<unknown> = Promise.resolve()
 async function pushFrame(bytes: Uint8Array) {
-  rendering = rendering.then(async () => {
+  rendering = rendering.catch(() => {}).then(async () => {
     const result = await bridge.updateImageRawData(
       new ImageRawDataUpdate({
         containerID: 3,

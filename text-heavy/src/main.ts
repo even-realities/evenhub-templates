@@ -60,11 +60,12 @@ function pagerLabel() {
 }
 
 // Serialize bridge writes so a fast-tapping user can't queue overlapping upgrades.
+// Each write waits for the previous one to settle, even if it failed.
 let rendering: Promise<unknown> = Promise.resolve()
 async function showPage(index: number) {
   if (index < 0 || index >= pages.length || index === currentPage) return
   currentPage = index
-  rendering = rendering.then(async () => {
+  rendering = rendering.catch(() => {}).then(async () => {
     await bridge.textContainerUpgrade(
       new TextContainerUpgrade({
         containerID: 1,
