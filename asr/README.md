@@ -46,7 +46,7 @@ Until you implement `src/asr/stt.ts`, the companion WebView shows a red error ch
    { "name": "network", "desc": "Stream audio to STT.", "whitelist": ["https://api.yourprovider.com", "wss://stream.yourprovider.com"] }
    ```
 
-   `evenhub pack` rejects an empty whitelist, which is why this entry isn't in `app.json` by default.
+   This entry isn't in `app.json` by default because the template has no provider hosts to list yet. `whitelist` is optional and defaults to `[]`, but per the [Networking docs](https://hub.evenrealities.com/docs/build/networking) the Even Realities App blocks requests to hosts that are not in it, so list every host your provider uses.
 
 ## G2 specifics
 
