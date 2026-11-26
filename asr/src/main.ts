@@ -5,16 +5,23 @@ import {
   TextContainerUpgrade,
   OsEventTypeList,
 } from '@evenrealities/even_hub_sdk'
-import { startSttStream } from './asr/stt'
+import { startSttStream as startDirectSttStream } from './asr/stt'
+import { startRelaySttStream } from './asr/stt-relay'
 import { mountUi, setStatus, setTranscript } from './ui'
 
 mountUi()
 
+// Prefer a relay (see relay/README.md): VITE_* values are compiled into the
+// bundle, so a provider key in VITE_STT_API_KEY ships to every user.
+const RELAY_URL = import.meta.env.VITE_STT_RELAY_URL as string | undefined
 const API_KEY = import.meta.env.VITE_STT_API_KEY as string
-if (!API_KEY) {
-  setStatus('error', 'VITE_STT_API_KEY not set — copy .env.example to .env.local')
-  console.warn('VITE_STT_API_KEY is not set.')
+if (!RELAY_URL && !API_KEY) {
+  setStatus('error', 'Set VITE_STT_RELAY_URL (recommended) or VITE_STT_API_KEY in .env.local')
+  console.warn('Neither VITE_STT_RELAY_URL nor VITE_STT_API_KEY is set.')
 }
+const startSttStream: typeof startDirectSttStream = RELAY_URL
+  ? (_key, onSnapshot, onError) => startRelaySttStream(RELAY_URL, onSnapshot, onError)
+  : startDirectSttStream
 
 const bridge = await waitForEvenAppBridge()
 
